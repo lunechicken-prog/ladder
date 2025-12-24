@@ -9,7 +9,7 @@
 html, body {
     margin: 0;
     padding: 0;
-    overflow: hidden; /* 關閉滑動 */
+    overflow: hidden;
     overscroll-behavior: none;
     font-family: Arial, sans-serif;
     background: #f4f4f4;
@@ -38,6 +38,8 @@ h1 {
 #ladder-wrapper {
     position: relative;
     width: 100%;
+    height: 75vh;
+    overflow: hidden;
 }
 
 #ladder {
@@ -76,8 +78,15 @@ h1 {
 }
 
 #result {
-    margin: 12px 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px 0;
     font-size: 20px;
+    background: rgba(255,255,255,0.95);
+    border-top: 1px solid #ccc;
+    z-index: 100;
 }
 </style>
 </head>
@@ -100,19 +109,20 @@ h1 {
 const COLS = 17;
 const ROWS = 30;
 const STEP_Y = 28;
-const STORAGE_KEY = "ladder-fixed-v1";
+const STORAGE_KEY = "ladder-fixed-v2";
 
 const icons = ["🎁","🎄","🎅","⭐","🍰","🍺","💎","👑","🎧","📱","🧸","🍷","🎮","☕","🎂","🕯️","🎉"];
 
 const topDiv = document.getElementById("top");
 const bottomDiv = document.getElementById("bottom");
 const ladder = document.getElementById("ladder");
+const wrapper = document.getElementById("ladder-wrapper");
 const result = document.getElementById("result");
 
 let colCenters = [];
 let hLines = [];
 
-/* 上方：圖案（可點） */
+/* 上方：禮物圖案（可點） */
 icons.forEach((icon, i) => {
     const d = document.createElement("div");
     d.innerText = icon;
@@ -120,7 +130,7 @@ icons.forEach((icon, i) => {
     topDiv.appendChild(d);
 });
 
-/* 下方：數字 */
+/* 下方：人員數字 */
 for (let i = 1; i <= COLS; i++) {
     const d = document.createElement("div");
     d.innerText = i;
@@ -136,7 +146,7 @@ function calcCols() {
     }
 }
 
-/* 產生或讀取固定梯子 */
+/* 讀取或建立固定梯子 */
 function loadLadder() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -186,7 +196,7 @@ loadLadder();
 drawLadder();
 window.addEventListener("resize", drawLadder);
 
-/* 平順動畫 */
+/* 動畫主流程 */
 async function start(startCol) {
     ladder.querySelectorAll(".player").forEach(p => p.remove());
     result.innerText = "";
@@ -211,13 +221,21 @@ async function start(startCol) {
         }
     }
 
-    result.innerText = "🎉 禮物 " + icons[startCol] + " → 第 " + (c + 1) + " 號！";
+    result.innerText = "🎉 結果出爐：禮物 " + icons[startCol] + " → 第 " + (c + 1) + " 號";
 }
 
+/* 讓畫面跟著圓點走 */
 function move(el, x, y) {
     return new Promise(res => {
         el.style.left = x + "px";
         el.style.top = y + "px";
+
+        const targetScroll = y - wrapper.clientHeight / 2;
+        wrapper.scrollTo({
+            top: Math.max(targetScroll, 0),
+            behavior: "smooth"
+        });
+
         setTimeout(res, 260);
     });
 }

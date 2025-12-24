@@ -2,12 +2,15 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>🎄 聖誕交換禮物－鬼腳圖 🎁</title>
 
 <style>
-body {
+html, body {
     margin: 0;
+    padding: 0;
+    overflow: hidden; /* 關閉滑動 */
+    overscroll-behavior: none;
     font-family: Arial, sans-serif;
     background: #f4f4f4;
     text-align: center;
@@ -15,17 +18,17 @@ body {
 
 h1 {
     margin: 10px 0;
-    color: #c62828;
     font-size: 20px;
+    color: #c62828;
 }
 
 #top, #bottom {
     display: grid;
     grid-template-columns: repeat(17, 1fr);
-    max-width: 100vw;
-    margin: 6px auto;
+    max-width: 100%;
+    font-size: 16px;
     font-weight: bold;
-    font-size: 14px;
+    margin: 6px auto;
 }
 
 #top div {
@@ -35,16 +38,15 @@ h1 {
 #ladder-wrapper {
     position: relative;
     width: 100%;
-    overflow-x: auto;
 }
 
 #ladder {
     position: relative;
     width: 100%;
-    max-width: 680px;
+    max-width: 700px;
     height: 900px;
     margin: 0 auto;
-    background: white;
+    background: #fff;
 }
 
 .vline {
@@ -74,8 +76,8 @@ h1 {
 }
 
 #result {
-    font-size: 20px;
     margin: 12px 0;
+    font-size: 20px;
 }
 </style>
 </head>
@@ -95,46 +97,68 @@ h1 {
 <div id="result"></div>
 
 <script>
-const cols = 17;
-const rows = 30;               // 夠長
+const COLS = 17;
+const ROWS = 30;
+const STEP_Y = 28;
+const STORAGE_KEY = "ladder-fixed-v1";
+
 const icons = ["🎁","🎄","🎅","⭐","🍰","🍺","💎","👑","🎧","📱","🧸","🍷","🎮","☕","🎂","🕯️","🎉"];
 
-const ladder = document.getElementById("ladder");
 const topDiv = document.getElementById("top");
 const bottomDiv = document.getElementById("bottom");
+const ladder = document.getElementById("ladder");
 const result = document.getElementById("result");
 
-let hLines = [];
 let colCenters = [];
+let hLines = [];
 
-// 建立上方數字
-for (let i = 1; i <= cols; i++) {
-    const d = document.createElement("div");
-    d.innerText = i;
-    d.onclick = () => start(i - 1);
-    topDiv.appendChild(d);
-}
-
-// 建立下方圖案
-icons.forEach(icon => {
+/* 上方：圖案（可點） */
+icons.forEach((icon, i) => {
     const d = document.createElement("div");
     d.innerText = icon;
-    bottomDiv.appendChild(d);
+    d.onclick = () => start(i);
+    topDiv.appendChild(d);
 });
 
-// 計算欄位中心（同一來源）
-function calculateColumns() {
-    const width = ladder.clientWidth;
+/* 下方：數字 */
+for (let i = 1; i <= COLS; i++) {
+    const d = document.createElement("div");
+    d.innerText = i;
+    bottomDiv.appendChild(d);
+}
+
+/* 計算欄位中心 */
+function calcCols() {
     colCenters = [];
-    for (let i = 0; i < cols; i++) {
-        colCenters.push(width * (i + 0.5) / cols);
+    const w = ladder.clientWidth;
+    for (let i = 0; i < COLS; i++) {
+        colCenters.push(w * (i + 0.5) / COLS);
     }
 }
 
-// 畫直線
-function drawVLines() {
+/* 產生或讀取固定梯子 */
+function loadLadder() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        hLines = JSON.parse(saved);
+        return;
+    }
+    hLines = [];
+    for (let r = 0; r < ROWS; r++) {
+        hLines[r] = [];
+        for (let c = 0; c < COLS - 1; c++) {
+            if (Math.random() < 0.35 && !hLines[r][c - 1]) {
+                hLines[r][c] = true;
+            }
+        }
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(hLines));
+}
+
+/* 畫梯子 */
+function drawLadder() {
     ladder.innerHTML = "";
-    calculateColumns();
+    calcCols();
 
     colCenters.forEach(x => {
         const v = document.createElement("div");
@@ -142,20 +166,14 @@ function drawVLines() {
         v.style.left = x + "px";
         ladder.appendChild(v);
     });
-}
 
-// 產生橫線（不連續）
-function generateHLines() {
-    hLines = [];
-    for (let r = 0; r < rows; r++) {
-        hLines[r] = [];
-        for (let c = 0; c < cols - 1; c++) {
-            if (Math.random() < 0.35 && !hLines[r][c - 1]) {
-                hLines[r][c] = true;
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS - 1; c++) {
+            if (hLines[r][c]) {
                 const h = document.createElement("div");
                 h.className = "hline";
                 h.style.left = colCenters[c] + "px";
-                h.style.top = (r * 28 + 20) + "px";
+                h.style.top = (r * STEP_Y + 20) + "px";
                 h.style.width = (colCenters[c + 1] - colCenters[c]) + "px";
                 ladder.appendChild(h);
             }
@@ -163,22 +181,17 @@ function generateHLines() {
     }
 }
 
-function setup() {
-    drawVLines();
-    generateHLines();
-}
+/* 初始化 */
+loadLadder();
+drawLadder();
+window.addEventListener("resize", drawLadder);
 
-window.addEventListener("resize", setup);
-setup();
-
-// 平順動畫（逐節點）
+/* 平順動畫 */
 async function start(startCol) {
     ladder.querySelectorAll(".player").forEach(p => p.remove());
     result.innerText = "";
 
     let c = startCol;
-    let r = 0;
-
     const p = document.createElement("div");
     p.className = "player";
     ladder.appendChild(p);
@@ -186,26 +199,26 @@ async function start(startCol) {
     p.style.left = colCenters[c] + "px";
     p.style.top = "0px";
 
-    for (; r < rows; r++) {
-        await moveTo(p, colCenters[c], r * 28 + 20);
+    for (let r = 0; r < ROWS; r++) {
+        await move(p, colCenters[c], r * STEP_Y + 20);
 
         if (c > 0 && hLines[r][c - 1]) {
             c--;
-            await moveTo(p, colCenters[c], r * 28 + 20);
+            await move(p, colCenters[c], r * STEP_Y + 20);
         } else if (hLines[r][c]) {
             c++;
-            await moveTo(p, colCenters[c], r * 28 + 20);
+            await move(p, colCenters[c], r * STEP_Y + 20);
         }
     }
 
-    result.innerText = "🎉 結果：第 " + (startCol + 1) + " 號 → " + icons[c] + " 禮物！";
+    result.innerText = "🎉 禮物 " + icons[startCol] + " → 第 " + (c + 1) + " 號！";
 }
 
-function moveTo(el, x, y) {
-    return new Promise(resolve => {
+function move(el, x, y) {
+    return new Promise(res => {
         el.style.left = x + "px";
         el.style.top = y + "px";
-        setTimeout(resolve, 260);
+        setTimeout(res, 260);
     });
 }
 </script>
